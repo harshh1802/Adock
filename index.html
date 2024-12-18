@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Video Player</title>
+    <title>WebSocket Video Player</title>
     <style>
         body {
             margin: 0;
@@ -43,6 +43,16 @@
     </video>
 
     <script>
+        // Connect to the Redis WebSocket endpoint
+        const socket = new WebSocket("ws://p2826.local:8081");
+        // const socket = new WebSocket("ws://localhost:8081");
+
+
+        // Function to get the current epoch time in seconds
+        function getCurrentEpochTime() {
+            return Math.floor(Date.now() / 1000); // Divide by 1000 for seconds
+        }
+
         // Load videos.json
         fetch('videos.json')
             .then(response => response.json())
@@ -51,27 +61,48 @@
                 const videoPlayer = document.getElementById('videoPlayer');
                 const videoIdDisplay = document.getElementById('videoId');
 
-                function playNextVideo() {
-                    // Get the current video details
-                    const currentVideo = videos[currentVideoIndex];
+                function sendWebSocketEvent(eventType, videoId) {
+                    const payload = {
+                        event: eventType,
+                        videoId: videoId,
+                        time: getCurrentEpochTime() // Use epoch time here
+                    };
+                    if (socket.readyState === WebSocket.OPEN) {
+                        socket.send(JSON.stringify(payload));
+                        console.log("Sent:", payload);
+                    } else {
+                        console.error("WebSocket not connected.");
+                    }
+                }
 
+                function playNextVideo() {
+                    const currentVideo = videos[currentVideoIndex];
+                    
                     // Update video source and display video ID
                     videoPlayer.src = currentVideo.location;
                     videoIdDisplay.textContent = `Now Playing: ${currentVideo["unique-ad-id"]}`;
 
-                    // Load and play the video
+                    // Notify WebSocket about video start
+                    sendWebSocketEvent("/start", currentVideo["unique-ad-id"]);
+
                     videoPlayer.load();
                     videoPlayer.play();
 
-                    // Increment the video index, reset to 0 if at the end
-                    currentVideoIndex = (currentVideoIndex + 1) % videos.length;
+                    // Handle stop event before moving to next video
+                    videoPlayer.onended = () => {
+                        sendWebSocketEvent("/stop", currentVideo["unique-ad-id"]);
+                        currentVideoIndex = (currentVideoIndex + 1) % videos.length; // Loop videos
+                        playNextVideo();
+                    };
                 }
 
-                // Play the first video initially
+                // Start playing the first video
                 playNextVideo();
 
-                // Event listener for 'ended' to play the next video
-                videoPlayer.addEventListener('ended', playNextVideo);
+                // Handle WebSocket connection events
+                socket.onopen = () => console.log("WebSocket connected.");
+                socket.onclose = () => console.log("WebSocket closed.");
+                socket.onerror = error => console.error("WebSocket Error:", error);
             })
             .catch(error => console.error('Error loading videos:', error));
     </script>
