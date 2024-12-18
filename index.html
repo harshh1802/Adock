@@ -1,0 +1,79 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Video Player</title>
+    <style>
+        body {
+            margin: 0;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            height: 100vh;
+            background-color: black;
+            flex-direction: column;
+        }
+        #videoId {
+            position: absolute;
+            top: 20px;
+            left: 50%;
+            transform: translateX(-50%);
+            font-size: 24px;
+            font-family: Arial, sans-serif;
+            color: white;
+            background-color: rgba(0, 0, 0, 0.6);
+            padding: 10px 20px;
+            border-radius: 10px;
+            z-index: 1000;
+        }
+        video {
+            width: 100%;
+            height: 100%;
+        }
+    </style>
+</head>
+<body>
+    <!-- Video ID Display -->
+    <div id="videoId">Loading...</div>
+
+    <!-- Video container -->
+    <video id="videoPlayer" autoplay muted>
+        Your browser does not support the video tag.
+    </video>
+
+    <script>
+        // Load videos.json
+        fetch('videos.json')
+            .then(response => response.json())
+            .then(videos => {
+                let currentVideoIndex = 0;
+                const videoPlayer = document.getElementById('videoPlayer');
+                const videoIdDisplay = document.getElementById('videoId');
+
+                function playNextVideo() {
+                    // Get the current video details
+                    const currentVideo = videos[currentVideoIndex];
+
+                    // Update video source and display video ID
+                    videoPlayer.src = currentVideo.location;
+                    videoIdDisplay.textContent = `Now Playing: ${currentVideo["unique-ad-id"]}`;
+
+                    // Load and play the video
+                    videoPlayer.load();
+                    videoPlayer.play();
+
+                    // Increment the video index, reset to 0 if at the end
+                    currentVideoIndex = (currentVideoIndex + 1) % videos.length;
+                }
+
+                // Play the first video initially
+                playNextVideo();
+
+                // Event listener for 'ended' to play the next video
+                videoPlayer.addEventListener('ended', playNextVideo);
+            })
+            .catch(error => console.error('Error loading videos:', error));
+    </script>
+</body>
+</html>
