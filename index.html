@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>WebSocket Video Player</title>
+    <title>Socket.IO Video Player</title>
     <style>
         body {
             margin: 0;
@@ -42,17 +42,34 @@
         Your browser does not support the video tag.
     </video>
 
+    <!-- Include Socket.IO 2.0.3 client library -->
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/socket.io/2.0.3/socket.io.js"></script>
+
     <script>
-        // Connect to the Redis WebSocket endpoint
-        const socket = new WebSocket("ws://p2826.local:8081");
-        // const socket = new WebSocket("ws://localhost:8081");
-
-
+        // Connect to the Socket.IO server
+        const socket = io("http://p2826.local:8081");
+    
         // Function to get the current epoch time in seconds
         function getCurrentEpochTime() {
             return Math.floor(Date.now() / 1000); // Divide by 1000 for seconds
         }
-
+    
+        // // Listen to the "start" channel
+        // socket.on("start", (data) => {
+        //     console.log("Received 'start' event:", data);
+        //     // Process the data for the "start" event
+        //     const { videoId, time } = data;
+        //     console.log(`Video Started: ${videoId} at ${new Date(time * 1000)}`);
+        // });
+    
+        // // Listen to the "stop" channel
+        // socket.on("stop", (data) => {
+        //     console.log("Received 'stop' event:", data);
+        //     // Process the data for the "stop" event
+        //     const { videoId, time } = data;
+        //     console.log(`Video Stopped: ${videoId} at ${new Date(time * 1000)}`);
+        // });
+    
         // Load videos.json
         fetch('videos.json')
             .then(response => response.json())
@@ -60,49 +77,45 @@
                 let currentVideoIndex = 0;
                 const videoPlayer = document.getElementById('videoPlayer');
                 const videoIdDisplay = document.getElementById('videoId');
-
-                function sendWebSocketEvent(eventType, videoId) {
+    
+                function sendSocketEvent(eventType, videoId) {
                     const payload = {
                         event: eventType,
                         videoId: videoId,
                         time: getCurrentEpochTime() // Use epoch time here
                     };
-                    if (socket.readyState === WebSocket.OPEN) {
-                        socket.send(JSON.stringify(payload));
-                        console.log("Sent:", payload);
-                    } else {
-                        console.error("WebSocket not connected.");
-                    }
+                    socket.emit(eventType, payload);
+                    console.log("Sent:", payload);
                 }
-
+    
                 function playNextVideo() {
                     const currentVideo = videos[currentVideoIndex];
-                    
+    
                     // Update video source and display video ID
                     videoPlayer.src = currentVideo.location;
                     videoIdDisplay.textContent = `Now Playing: ${currentVideo["unique-ad-id"]}`;
-
-                    // Notify WebSocket about video start
-                    sendWebSocketEvent("/start", currentVideo["unique-ad-id"]);
-
+    
+                    // Notify Socket.IO about video start
+                    sendSocketEvent("start", currentVideo["unique-ad-id"]);
+    
                     videoPlayer.load();
                     videoPlayer.play();
-
+    
                     // Handle stop event before moving to next video
                     videoPlayer.onended = () => {
-                        sendWebSocketEvent("/stop", currentVideo["unique-ad-id"]);
+                        sendSocketEvent("stop", currentVideo["unique-ad-id"]);
                         currentVideoIndex = (currentVideoIndex + 1) % videos.length; // Loop videos
                         playNextVideo();
                     };
                 }
-
+    
                 // Start playing the first video
                 playNextVideo();
-
-                // Handle WebSocket connection events
-                socket.onopen = () => console.log("WebSocket connected.");
-                socket.onclose = () => console.log("WebSocket closed.");
-                socket.onerror = error => console.error("WebSocket Error:", error);
+    
+                // Handle Socket.IO connection events
+                socket.on("connect", () => console.log("Socket.IO connected."));
+                socket.on("disconnect", () => console.log("Socket.IO disconnected."));
+                socket.on("error", error => console.error("Socket.IO Error:", error));
             })
             .catch(error => console.error('Error loading videos:', error));
     </script>
