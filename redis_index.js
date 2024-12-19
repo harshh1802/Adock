@@ -40,6 +40,14 @@ io.sockets.on('connection', function (socket) {
         io.emit('stop', data);                
       });
 
+      socket.on('cameraAnalytics', (data) => {                
+        io.emit('cameraAnalytics', data);                
+      });
+
+      socket.on('dynamicAds', (data) => {                
+        io.emit('dynamicAds', data);                
+      });
+
                                    
   });                              
                                                    
